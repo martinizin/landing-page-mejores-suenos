@@ -192,7 +192,8 @@ async function toggleActive(e: Event) {
       btn.setAttribute('data-active', active ? '0' : '1');
       btn.textContent = active ? 'No' : 'Sí';
       btn.className = (active ? 'bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-200' : 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200') + ' rounded px-2 py-1 font-bold border';
-      btn.closest('tr').className = active ? 'text-gray-400 font-normal' : '';
+      const row = btn.closest('tr');
+      if (row) row.className = active ? 'text-gray-400 font-normal' : '';
       showAlert('Estado actualizado exitosamente', true);
     } else {
       showAlert('No se pudo actualizar: ' + (data.message || 'Error inesperado'), false);
