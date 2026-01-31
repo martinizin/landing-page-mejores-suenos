@@ -1,0 +1,93 @@
+---
+/**
+ * Base Layout Component
+ * Wraps all pages with common structure
+ * Professional ecommerce styling
+ */
+import Header from './Header.astro';
+import Footer from './Footer.astro';
+import WhatsAppFloat from '../common/WhatsAppFloat.astro';
+import { BRAND } from '../../lib/config/brand';
+
+interface Props {
+  title?: string;
+  description?: string;
+  showWhatsAppFloat?: boolean;
+}
+
+const { 
+  title = BRAND.name, 
+  description = BRAND.tagline,
+  showWhatsAppFloat = true,
+} = Astro.props;
+
+const currentPath = Astro.url.pathname;
+---
+
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={BRAND.name} />
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://wa.me" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Google Fonts: Inter for modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body class="min-h-screen flex flex-col bg-white text-dark-slate font-sans antialiased">
+    <Header currentPath={currentPath} />
+    <main class="flex-grow">
+      <slot />
+    </main>
+    <Footer />
+    
+    <!-- Global WhatsApp floating button -->
+    {showWhatsAppFloat && <WhatsAppFloat />}
+  </body>
+</html>
+
+<style is:global>
+  /* Global typography improvements */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  body {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  
+  /* Smooth scrolling for anchor links */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+  
+  /* Focus styles for accessibility */
+  :focus-visible {
+    outline: 2px solid #0557B8;
+    outline-offset: 2px;
+  }
+  
+  /* Selection color */
+  ::selection {
+    background-color: #0557B8;
+    color: white;
+  }
+</style>

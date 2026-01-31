@@ -1,0 +1,225 @@
+---
+/*
+  Mini-Admin Catálogo QA — protegido por login simple
+  - El dashboard lo renderiza Astro (variables del lado servidor)
+  - Login con credenciales quemadas protege la vista (sessionStorage)
+*/
+import { catalogRepo } from '../../lib/data/catalogRepo';
+const categories = await catalogRepo.getCategories();
+const products = await catalogRepo.getAllProducts();
+function getCategoryName(id: string): string {
+  const cat = categories.find((c: any) => c.id === id);
+  return cat ? `${cat.name} (${cat.slug})` : id;
+}
+---
+
+<html lang="es">
+  <head>
+    <title>Mini-Admin Catálogo | QA Protegido</title>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+  </head>
+  <body class="bg-slate-50 min-h-screen w-full flex items-center justify-center">
+<!-- LOGIN (hidden al estar autenticado) -->
+<div id="miniadmin-login" class="fixed inset-0 flex flex-col items-center justify-center z-30 bg-gradient-to-tr from-slate-200 via-white to-sky-100">
+  <form class="bg-white shadow-xl rounded-xl px-10 py-8 max-w-sm w-full flex flex-col gap-3 border border-slate-200" id="loginform">
+    <div class="mx-auto mb-2 flex flex-col items-center">
+      <svg xmlns='http://www.w3.org/2000/svg' class="w-10 h-10 mb-2 text-accent-cyan" fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2z' /><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7m16 0a4 4 0 00-8 0m8 0H3' /></svg>
+      <h2 class="font-bold text-2xl mb-1 text-dark-slate">Panel Interno QA</h2>
+      <span class="text-sm text-slate-500">Catálogo sólo lectura/modificación básica</span>
+    </div>
+    <div id="login-error"></div>
+    <input class="border border-slate-300 px-3 py-2 rounded text-lg focus:outline-accent-cyan" placeholder="Usuario" name="user" id="user" autocomplete="username"/>
+    <input class="border border-slate-300 px-3 py-2 rounded text-lg focus:outline-accent-cyan" type="password" placeholder="Contraseña" name="pass" id="pass" autocomplete="current-password"/>
+    <button class="mt-1 bg-accent-cyan hover:bg-accent-cyan-vivid text-white text-base font-bold px-5 py-2.5 rounded" type="submit">Entrar</button>
+  </form>
+</div>
+
+<!-- DASHBOARD protegida (hidden si no hay login) -->
+<div id="miniadmin-panel" class="w-full h-full min-h-screen flex flex-col items-center p-0 m-0 bg-slate-50" style="display:none;">
+  <div class="w-full max-w-screen-xl mx-auto py-10">
+    <div class="flex w-full justify-between mb-6 items-center">
+      <h1 class="text-3xl font-bold text-dark-slate">Mini-Admin Catálogo (QA/Marketing)</h1>
+      <button id="logout-btn" class="text-base rounded bg-primary-blue hover:bg-primary-navy text-white px-4 py-2 ml-3 font-bold shadow">Cerrar sesión</button>
+    </div>
+    <p class="mb-2"><span class="font-semibold">Vista sólo para revisión/catalogación interna.</span> Cambios realizados aquí afectan el Supabase real que alimenta la landing.</p>
+    <hr class="my-4"/>
+    <h2 class="text-xl font-bold my-4">Categorías (<span>{categories.length}</span>)</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white shadow rounded mb-9 border">
+        <thead><tr><th class="py-2 px-3 bg-slate-100">ID</th><th class="py-2 px-3 bg-slate-100">Nombre</th><th class="py-2 px-3 bg-slate-100">Slug</th></tr></thead>
+        <tbody>
+          {categories.map(cat => (
+            <tr>
+              <td class="py-2 px-3 font-mono text-xs">{cat.id}</td>
+              <td class="py-2 px-3">{cat.name}</td>
+              <td class="py-2 px-3">{cat.slug}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <h2 class="text-xl font-bold my-4">Productos (<span>{products.length}</span>)</h2>
+    <div class="mb-3 flex items-center justify-between w-full">
+      <input type="text" class="border rounded px-3 py-2 w-56" id="search" placeholder="Buscar producto/nombre/slug..." />
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white shadow rounded border mb-12" id="products-table">
+        <thead>
+          <tr>
+            <th class="py-2 px-2 bg-slate-100">Imagen</th>
+            <th class="py-2 px-2 bg-slate-100">ID/Slug</th>
+            <th class="py-2 px-2 bg-slate-100">Nombre</th>
+            <th class="py-2 px-2 bg-slate-100">Activo</th>
+            <th class="py-2 px-2 bg-slate-100">Categoría</th>
+          </tr>
+        </thead>
+        <tbody id="prod-tbody">
+          {products.map(prod => (
+            <tr class={prod.isActive ? '' : 'text-gray-400 font-normal'}>
+              <td class="py-2 px-2">{prod.imageUrl && <img src={prod.imageUrl} alt="img" class="rounded-lg shadow border min-w-[128px] min-h-[96px] max-w-[160px] max-h-[128px]" />}</td>
+              <td class="py-2 px-2 font-mono text-xs">{prod.slug}</td>
+              <td class="py-2 px-2">{prod.name}</td>
+              <td class="py-2 px-2 font-bold">
+  <button class="rounded px-2 py-1 font-bold border"
+    data-slug={prod.slug}
+    data-active={prod.isActive ? '1' : '0'}
+    data-row
+    class={prod.isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200' : 'bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-200'}>
+    {prod.isActive ? 'Sí' : 'No'}
+  </button>
+</td>
+              <td class="py-2 px-2">{getCategoryName(prod.categoryId)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ----- Seguridad y UI login ------
+const loginDiv = document.getElementById('miniadmin-login');
+const panelDiv = document.getElementById('miniadmin-panel');
+const USER="admindaniv"; const PASS="m3jor3sS42026";
+function showPanel() {
+  if (loginDiv && loginDiv instanceof HTMLElement) loginDiv.style.display = 'none';
+  if (panelDiv && panelDiv instanceof HTMLElement) panelDiv.style.display = 'flex';
+}
+function showLogin(errMsg='') {
+  if (loginDiv && loginDiv instanceof HTMLElement) loginDiv.style.display = 'flex';
+  if (panelDiv && panelDiv instanceof HTMLElement) panelDiv.style.display = 'none';
+  const errDiv = document.getElementById('login-error');
+  if (errDiv) errDiv.innerHTML = errMsg ? `<div class='bg-rose-100 border border-rose-300 text-rose-700 rounded px-2 py-2 text-sm text-center mb-2'>${errMsg}</div>` : '';
+}
+function isLoggedIn(){return sessionStorage.getItem('miniadm_ok')==='1';}
+if(isLoggedIn()) {
+  showPanel();
+} else {
+  showLogin();
+}
+// Login submit
+const form = document.getElementById('loginform');
+if(form){
+ form.onsubmit = ev => {
+  ev.preventDefault();
+  const userInput = document.getElementById('user') as HTMLInputElement | null;
+  const passInput = document.getElementById('pass') as HTMLInputElement | null;
+  const u = userInput ? userInput.value.trim() : '';
+  const p = passInput ? passInput.value.trim() : '';
+
+  if(u === USER && p === PASS){
+    sessionStorage.setItem('miniadm_ok','1');
+    showPanel();
+  }else{
+    showLogin('Credenciales incorrectas');
+  }
+ }; 
+}
+// Logout botón
+const logout = document.getElementById('logout-btn');
+if(logout){
+  logout.onclick = function(){
+    sessionStorage.removeItem('miniadm_ok');
+    window.location.href = '/';
+  };
+}
+// ----- Activar/desactivar producto
+const prodTbody = document.getElementById('prod-tbody');
+const productsTable = document.querySelector('#products-table');
+const alertDiv = document.createElement('div');
+alertDiv.className = 'my-2 text-center hidden';
+if (productsTable && productsTable.parentElement) {
+  productsTable.parentElement.prepend(alertDiv);
+}
+// (Nota: Este es el único bloque de declaración de productsTable/alertDiv)
+
+// Search productos
+const search = document.getElementById('search') as HTMLInputElement | null;
+const prodRows = prodTbody ? Array.from(prodTbody.querySelectorAll('tr')) : [];
+if (search && prodRows.length) {
+  search.addEventListener('input', function (this: HTMLInputElement) {
+    const q = this.value.trim().toLowerCase();
+    prodRows.forEach(row => {
+      if (row instanceof HTMLElement) {
+        row.style.display = row.textContent && row.textContent.toLowerCase().includes(q) ? '' : 'none';
+      }
+    });
+  });
+}
+
+
+async function toggleActive(e: Event) {
+  const target = e.target as HTMLElement | null;
+  if (!target) return;
+  const btn = target.closest('button[data-slug]') as HTMLButtonElement | null;
+  if (!btn) return;
+  const slug = btn.getAttribute('data-slug');
+  let active = btn.getAttribute('data-active') === '1';
+  btn.disabled = true; btn.textContent = '...';
+  alertDiv.classList.add('hidden');
+  try {
+    const res = await fetch('/api/product-activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, isActive: !active })
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Update button, row style, data-active
+      btn.setAttribute('data-active', active ? '0' : '1');
+      btn.textContent = active ? 'No' : 'Sí';
+      btn.className = (active ? 'bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-200' : 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200') + ' rounded px-2 py-1 font-bold border';
+      btn.closest('tr').className = active ? 'text-gray-400 font-normal' : '';
+      showAlert('Estado actualizado exitosamente', true);
+    } else {
+      showAlert('No se pudo actualizar: ' + (data.message || 'Error inesperado'), false);
+    }
+  } catch (err) {
+    showAlert('Error de red o servidor', false);
+  }
+  btn.disabled = false;
+}
+
+function showAlert(msg: string, success: boolean) {
+  alertDiv.textContent = msg;
+  alertDiv.className = 'my-2 text-center rounded px-3 py-2 text-base ' + (success ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-rose-100 text-rose-700 border border-rose-300');
+  alertDiv.classList.remove('hidden');
+  setTimeout(() => alertDiv.classList.add('hidden'), 3000);
+}
+if (prodTbody) {
+  prodTbody.addEventListener('click', function (e: MouseEvent) {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    const btn = target.closest('button[data-slug]');
+    if (btn) toggleActive(e);
+  });
+}
+
+</script>
+<noscript><div class="bg-rose-100 border border-rose-300 text-rose-700 rounded px-2 py-2 text-sm max-w-sm mx-auto mt-10">Este panel requiere JavaScript habilitado.</div></noscript>
+
+  </body>
+</html>

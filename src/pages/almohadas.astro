@@ -1,0 +1,54 @@
+---
+/**
+ * Almohadas Listing Page
+ * Shows all pillow products with client-side search functionality
+ */
+import Layout from '../components/layout/Layout.astro';
+import HeroBanner from '../components/layout/HeroBanner.astro';
+import ProductCard from '../components/catalog/ProductCard.astro';
+import SearchBar from '../components/catalog/SearchBar.astro';
+import { catalogRepo } from '../lib/data/catalogRepo';
+import { BRAND } from '../lib/config/brand';
+
+const categories = await catalogRepo.getCategories();
+const almohadasCategory = categories.find(cat => cat.slug === 'almohadas');
+const products = almohadasCategory
+  ? await catalogRepo.getProductsByCategory(almohadasCategory.id)
+  : [];
+---
+
+<Layout 
+  title={`Almohadas - ${BRAND.name}`}
+  description="Descubre nuestra selección de almohadas de alta calidad. Envío gratis a nivel nacional."
+>
+  <!-- Category Banner -->
+  <HeroBanner 
+    variant="category"
+    title="Almohadas"
+    imageUrl={BRAND.banners.almohadas}
+  />
+
+  <!-- Products Section -->
+  <section class="py-8 sm:py-12 md:py-16">
+    <div class="container mx-auto px-4">
+      <!-- Search with integrated results count -->
+      <div class="max-w-md mx-auto">
+        <SearchBar placeholder="Buscar almohadas..." id="search-almohadas" />
+      </div>
+
+      <!-- Products Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6" id="products-grid">
+        {products.map((product, index) => (
+          <ProductCard product={product} priority={index < 4} />
+        ))}
+      </div>
+
+      <!-- Static empty state (only if no products at build time) -->
+      {products.length === 0 && (
+        <div class="text-center py-12">
+          <p class="text-muted-slate text-lg">No hay almohadas disponibles en este momento.</p>
+        </div>
+      )}
+    </div>
+  </section>
+</Layout>

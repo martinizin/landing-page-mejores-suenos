@@ -1,0 +1,55 @@
+---
+/**
+ * 404 - Page Not Found
+ * User-friendly error page with navigation options
+ */
+import Layout from '../components/layout/Layout.astro';
+import Button from '../components/common/Button.astro';
+import { BRAND } from '../lib/config/brand';
+---
+
+<Layout title={`Página no encontrada | ${BRAND.name}`} showWhatsAppFloat={true}>
+  <section class="min-h-[60vh] flex items-center justify-center px-4 py-16">
+    <div class="text-center max-w-lg">
+      <!-- 404 Number -->
+      <h1 class="text-8xl md:text-9xl font-bold text-primary-blue/20 mb-4">
+        404
+      </h1>
+      
+      <!-- Message -->
+      <h2 class="text-2xl md:text-3xl font-semibold text-dark-slate mb-4">
+        Página no encontrada
+      </h2>
+      
+      <p class="text-dark-slate/70 mb-8">
+        Lo sentimos, la página que buscas no existe o ha sido movida. 
+        Pero no te preocupes, puedes explorar nuestros productos.
+      </p>
+      
+      <!-- Navigation Options -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+        <Button href="/" variant="primary" size="lg">
+          Ir al Inicio
+        </Button>
+        <Button href="/colchones" variant="outline" size="lg">
+          Ver Colchones
+        </Button>
+        <Button href="/almohadas" variant="outline" size="lg">
+          Ver Almohadas
+        </Button>
+      </div>
+      
+      <!-- Decorative Element -->
+      <div class="mt-12">
+        <img 
+          src={BRAND.logo} 
+          alt={BRAND.name}
+          class="w-24 h-24 mx-auto opacity-30"
+        />
+        <p class="text-sm text-dark-slate/50 mt-4">
+          {BRAND.tagline}
+        </p>
+      </div>
+    </div>
+  </section>
+</Layout>

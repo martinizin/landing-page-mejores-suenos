@@ -1,0 +1,88 @@
+---
+/**
+ * ProductImage Component
+ * Optimized image component with aspect-ratio, object-fit, and lazy loading
+ * Prevents CLS (Cumulative Layout Shift) with fixed aspect containers
+ * 
+ * Responsive strategy:
+ * - Uses aspect-ratio CSS for consistent sizing
+ * - object-fit: contain for product images (shows full product)
+ * - Lazy loading for below-fold images
+ * - Fallback placeholder on error
+ */
+import { PLACEHOLDER_IMAGE, getWebPPath } from '../../lib/utils/images';
+
+interface Props {
+  src: string;
+  alt: string;
+  aspectRatio?: '4/3' | '1/1' | '3/4' | '16/9';
+  objectFit?: 'contain' | 'cover';
+  priority?: boolean;
+  class?: string;
+  sizes?: string;
+}
+
+const { 
+  src, 
+  alt,
+  aspectRatio = '4/3',
+  objectFit = 'contain',
+  priority = false,
+  class: className = '',
+  sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw',
+} = Astro.props;
+
+// Generate WebP path for future <source> element
+const webpSrc = getWebPPath(src);
+const isWebP = src.endsWith('.webp');
+
+// Background color for image container (matches gray-light)
+const bgColor = '#D5D7D6';
+---
+
+<div 
+  class:list={[
+    'product-image-container relative overflow-hidden bg-gray-light',
+    className
+  ]}
+  style={`aspect-ratio: ${aspectRatio};`}
+>
+  {/* 
+    For future WebP support with fallback, uncomment this:
+    <picture>
+      <source srcset={webpSrc} type="image/webp" />
+      <img ... />
+    </picture>
+  */}
+  <img
+    src={src}
+    alt={alt}
+    loading={priority ? 'eager' : 'lazy'}
+    decoding={priority ? 'sync' : 'async'}
+    class:list={[
+      'w-full h-full transition-opacity duration-300',
+      objectFit === 'contain' ? 'object-contain' : 'object-cover',
+    ]}
+    style={`background-color: ${bgColor};`}
+    sizes={sizes}
+    onerror={`this.onerror=null; this.src='${PLACEHOLDER_IMAGE}'; this.classList.add('opacity-50');`}
+  />
+</div>
+
+<style>
+  .product-image-container {
+    /* Prevent layout shift */
+    contain: layout;
+  }
+  
+  .product-image-container img {
+    /* Smooth image load */
+    opacity: 1;
+  }
+  
+  /* Add subtle loading state */
+  .product-image-container img[loading="lazy"] {
+    background: linear-gradient(90deg, #D5D7D6 0%, #E8E9E8 50%, #D5D7D6 100%);
+    background-size: 200% 100%;
+  }
+</style>

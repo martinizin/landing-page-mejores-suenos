@@ -1,0 +1,289 @@
+---
+/**
+ * Product Detail Page
+ * Full functionality: dropdown selection, dynamic pricing, WhatsApp integration
+ */
+import Layout from '../../components/layout/Layout.astro';
+import ProductImage from '../../components/common/ProductImage.astro';
+import { catalogRepo } from '../../lib/data/catalogRepo';
+import { BRAND } from '../../lib/config/brand';
+
+// Importación centralizada arriba para evitar duplicados
+
+export async function getStaticPaths() {
+  const categories = await catalogRepo.getCategories();
+  const colchonesCategory = categories.find(cat => cat.slug === 'colchones');
+  const almohadasCategory = categories.find(cat => cat.slug === 'almohadas');
+  const colchones = colchonesCategory
+    ? await catalogRepo.getProductsByCategory(colchonesCategory.id)
+    : [];
+  const almohadas = almohadasCategory
+    ? await catalogRepo.getProductsByCategory(almohadasCategory.id)
+    : [];
+  const products = [...colchones, ...almohadas];
+  return products.map(product => ({
+    params: { slug: product.slug },
+  }));
+}
+
+import type { Product } from '../../lib/data/types';
+
+const { slug } = Astro.params;
+const product: Product | null = await catalogRepo.getProductBySlug(slug!);
+
+if (!product) {
+  return Astro.redirect('/404');
+}
+
+const categories = await catalogRepo.getCategories();
+const productCategory = categories.find(cat => cat.id === product.categoryId);
+const categoryName = productCategory?.name || '';
+const categorySlug = productCategory?.slug || '';
+const categoryHref = `/${categorySlug}`;
+
+// Determine label for options based on category slug
+const optionLabel = categorySlug === 'colchones'
+  ? 'Selecciona el tamaño:' 
+  : 'Selecciona la medida:';
+---
+
+<Layout 
+  title={`${product.name} - ${BRAND.name}`}
+  description={product.description}
+>
+  <!-- Breadcrumb -->
+  <nav class="bg-gray-50 py-3">
+    <div class="container mx-auto px-4">
+      <ol class="flex flex-wrap items-center gap-2 text-sm text-muted-slate">
+        <li><a href="/" class="hover:text-primary-blue transition-colors">Inicio</a></li>
+        <li class="text-gray-mid">/</li>
+        <li><a href={categoryHref} class="hover:text-primary-blue transition-colors">{categoryName}</a></li>
+        <li class="text-gray-mid">/</li>
+        <li class="text-dark-slate font-medium truncate max-w-[200px] sm:max-w-none">{product.name}</li>
+      </ol>
+    </div>
+  </nav>
+
+  <!-- Product Detail -->
+  <section class="py-6 sm:py-8 md:py-12">
+    <div class="container mx-auto px-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12">
+        <!-- Image -->
+        <div class="product-detail-image">
+          <div class="rounded-xl overflow-hidden bg-gray-light">
+            <ProductImage
+              src={product.imageUrl}
+              alt={product.name}
+              aspectRatio="1/1"
+              objectFit="contain"
+              priority={true}
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              class="w-full"
+            />
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="product-detail-info flex flex-col">
+          <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-dark-slate mb-3 sm:mb-4">
+            {product.name}
+          </h1>
+          
+          <p class="text-muted-slate text-base sm:text-lg mb-4 sm:mb-6">
+            {product.description}
+          </p>
+
+          <!-- Options (Plaza/Size selection) -->
+          <div class="mb-4 sm:mb-6">
+            <label for="plaza-select" class="block text-sm font-medium text-dark-slate mb-2">
+              {optionLabel}
+            </label>
+            <select 
+              id="plaza-select"
+              class="w-full px-4 py-3 rounded-lg border-2 border-gray-light bg-white text-dark-slate focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-primary-blue transition-all text-base cursor-pointer"
+            >
+              <option value="" disabled selected>-- Elige una opción --</option>
+              {product.options.map(option => (
+                <option value={option.label} data-price={option.price}>
+                  {option.label} - {BRAND.texts.currency}{option.price.toFixed(2)}
+                </option>
+              ))}
+            </select>
+            
+            <!-- Selection hint -->
+            <p id="selection-hint" class="text-sm text-accent-cyan mt-2 flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Selecciona una opción para continuar
+            </p>
+          </div>
+
+          <!-- Price display -->
+          <div class="mb-4 sm:mb-6">
+            <div class="flex items-baseline gap-2">
+              <span class="text-sm text-muted-slate">Precio:</span>
+              <p class="text-2xl sm:text-3xl font-bold text-primary-blue" id="price-display">
+                --
+              </p>
+            </div>
+            <p class="text-sm text-muted-slate mt-1 flex items-center gap-1">
+              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              {BRAND.texts.shippingIncluded}
+            </p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-auto">
+            <button 
+              id="btn-comprar"
+              disabled
+              class="flex-1 bg-primary-blue text-white font-semibold px-6 py-3 sm:py-4 rounded-lg transition-all flex items-center justify-center gap-2 text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-navy disabled:hover:bg-primary-blue"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+              </svg>
+              Comprar
+            </button>
+            <button 
+              id="btn-whatsapp"
+              disabled
+              class="flex-1 bg-green-600 text-white font-semibold px-6 py-3 sm:py-4 rounded-lg transition-all flex items-center justify-center gap-2 text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700 disabled:hover:bg-green-600"
+            >
+              <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              Consultar por WhatsApp
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .product-detail-image {
+    max-height: 70vh;
+  }
+  
+  @media (min-width: 1024px) {
+    .product-detail-image {
+      max-height: none;
+      position: sticky;
+      top: 6rem;
+    }
+  }
+  
+  .product-detail-info {
+    min-height: 400px;
+  }
+  
+  /* Button enabled state animation */
+  #btn-comprar:not(:disabled),
+  #btn-whatsapp:not(:disabled) {
+    animation: pulse-once 0.3s ease-out;
+  }
+  
+  @keyframes pulse-once {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+</style>
+
+<script define:vars={{ 
+  productName: product.name, 
+  options: product.options, 
+  whatsappNumber: BRAND.whatsapp.number,
+  currency: BRAND.texts.currency 
+}}>
+  /**
+   * Product detail page interactivity
+   * - Dynamic price update on option selection
+   * - Enable/disable buttons based on selection
+   * - WhatsApp link generation with product details
+   */
+  
+  const selectEl = document.getElementById('plaza-select');
+  const priceDisplay = document.getElementById('price-display');
+  const btnComprar = document.getElementById('btn-comprar');
+  const btnWhatsapp = document.getElementById('btn-whatsapp');
+  const selectionHint = document.getElementById('selection-hint');
+  
+  let selectedOption = null;
+  
+  function getSelectedOption() {
+    const selectedValue = selectEl?.value;
+    if (!selectedValue) return null;
+    return options.find(o => o.label === selectedValue) || null;
+  }
+  
+  function updateUI() {
+    selectedOption = getSelectedOption();
+    
+    if (selectedOption) {
+      // Update price
+      if (priceDisplay) {
+        priceDisplay.textContent = `${currency}${selectedOption.price.toFixed(2)}`;
+        priceDisplay.classList.remove('text-muted-slate');
+        priceDisplay.classList.add('text-primary-blue');
+      }
+      
+      // Enable buttons
+      btnComprar?.removeAttribute('disabled');
+      btnWhatsapp?.removeAttribute('disabled');
+      
+      // Hide hint
+      if (selectionHint) {
+        selectionHint.style.display = 'none';
+      }
+    } else {
+      // Reset price
+      if (priceDisplay) {
+        priceDisplay.textContent = '--';
+      }
+      
+      // Disable buttons
+      btnComprar?.setAttribute('disabled', '');
+      btnWhatsapp?.setAttribute('disabled', '');
+      
+      // Show hint
+      if (selectionHint) {
+        selectionHint.style.display = 'flex';
+      }
+    }
+  }
+  
+  function buildWhatsAppUrl() {
+    if (!selectedOption) return '#';
+    
+    const message = [
+      `Hola, me interesa el siguiente producto:`,
+      ``,
+      `*${productName}*`,
+      `Opción: ${selectedOption.label}`,
+      `Precio: ${currency}${selectedOption.price.toFixed(2)}`,
+      ``,
+      `¿Podrían darme más información?`
+    ].join('\n');
+    
+    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+  }
+  
+  function handlePurchase() {
+    if (!selectedOption) return;
+    window.open(buildWhatsAppUrl(), '_blank');
+  }
+  
+  // Event listeners
+  selectEl?.addEventListener('change', updateUI);
+  
+  btnComprar?.addEventListener('click', handlePurchase);
+  btnWhatsapp?.addEventListener('click', handlePurchase);
+  
+  // Initialize UI
+  updateUI();
+</script>

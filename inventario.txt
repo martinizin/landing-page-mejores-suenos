@@ -1,0 +1,171 @@
+COLCHONES:
+1. Nombre: ALTERNATIVA
+
+Plazas: 1 Plz, 1 ½ Plz, 2 Plz
+
+Precio: $65, $70, $81
+
+
+2. Nombre: ZAFIRO 24CM
+
+Plazas: 1 ½ Plz, 2 Plz
+
+Precio: $73, $87
+
+
+3. Nombre: ZAFIRO 29CM
+
+Plazas: 1 ½ Plz, 2 Plz, 2 ½ Plz
+
+Precio: $85, $100, $125
+
+
+4. Nombre: IMPERIAL 23
+
+Plazas: 1 ½ Plz, 2 Plz
+
+Precio: $100, $120
+
+
+5. Nombre: IMPERIAL 30
+
+Plazas: 1 ½ Plz, 2 Plz, 2 ½ Plz, 3 Plz
+
+Precio: $105, $130, $160, $200
+
+
+6. Nombre: SUAVE BRISA
+
+Plazas: 1 1/2 Plz, 2 Plz, 2 1/2 Plz
+
+Precio: $135, $170, $205
+
+
+7. Nombre: Continental De Lujo Tradicional
+
+Plazas: 1 1/2 Plz, 2 Plz, 2 1/2 Plz, 3 Plz
+
+Precio: $145, $185, $225, $290
+
+
+8. Nombre: Continental de Lujo Pillow Top
+
+Plazas: 1 1/2 Plz, 2 Plz, 2 1/2 Plz, 3 Plz
+
+Precio: $160, $205, $255, $320
+
+
+9. Nombre: DREAM BOX SOFT
+
+Plazas: 1 1/2 Plz, 2 Plazas, 2 1/2 Plz, 3 Plazas
+
+Precio: $185, $230, $270, $325
+
+
+10. Nombre: Continental de Lujo FB
+
+Plazas: 1 1/2 Plz, 2 Plz, 2 1/2 Plz, 3 Plz
+
+Precio: $195, $230, $275, $330
+
+
+11. Nombre: FUSSION
+
+Plazas: 1 1/2 Plz, 2 Plz, 2 1/2 Plz, 3 Plz
+
+Precio: $215, $265, $330, $425
+
+
+12. Nombre: DREAM BOX MF
+
+Plazas: 1 1/2 Plz, 2 Plazas, 2 1/2 Plz, 3 Plazas
+
+Precio: $220, $275, $315, $385
+
+
+13. Nombre: PRENSADO CLINICO
+
+Plazas: 1 1/2 Plz, 2 Plz, 2 1/2 Plz, 3 Plz
+
+Precio: $135, $170, $205, $255
+
+
+14. Nombre: RESTAPEDIC
+
+Plazas: 1 1/2 Plz, 2 Plz, 2 1/2 Plz, 3 Plz
+
+Precio: $140, $175, $210, $265
+
+ALMOHADAS
+
+1. Nombre: Almohada Low Back Bamboo
+
+Medida: 33 cm x 32 cm
+
+Precio: $23,64
+
+2. Nombre: Almohada Cervical Memory Foam Fresh
+
+Medida: 61 cm x 38 cm
+
+Precio: $36,02
+
+3. Nombre: Almohada Memory Foam King Fresh
+
+Medida: 61 cm x 38 cm
+
+Precio: $45,72
+
+4. Nombre: Almohada Cervical Fresh Air
+
+Medida: 60 cm x 38 cm
+
+Precio: $36,89
+
+5. Nombre: Almohada Antireflujo Vita Pillow
+
+Medidas: 1. 65 cm x 68 cm x 17 cm 2. 65 cm x 68 cm x 17 cm
+
+Precio: $44,15
+ 
+6. Nombre: Almohada Memory Foam Lavanda
+
+Medida: 62 cm x 42 cm x 14 cm
+
+Precio: $28,62
+
+7. Nombre: Almohada Memory Foam Manzanilla
+
+Medida: 62 cm x 42 cm x 14 cm
+
+Precio: $28,62
+
+8. Nombre: Almohada Dual Confort
+
+Medida: 60 cm x 40 cm
+
+Precio: $27,57
+
+9. Nombre: Almohada Aurora Soft
+
+Medida: 60 cm x 40 cm
+
+Precio: $4,99
+
+10. Nombre: Almohada Chaide Rubí
+
+Medida: 70 cm x 50 cm
+
+Precio: $6,45
+
+11. Nombre: Almohada Hotelera
+
+Medidas: opcion 1: 70 cm x 50 cm opcion 2: 90 cm x 50 cm
+
+Precio: $10,85
+
+12. Nombre: Almohada Enrollada Bianca
+
+Medida: 40 cm x 60 cm
+
+Precio: $4,35

@@ -1,17 +1,253 @@
 ---
+/**
+ * Home Page
+ * Professional ecommerce landing with hero, categories, and featured products
+ * Inspired by Chaide.com visual style
+ */
+import Layout from '../components/layout/Layout.astro';
+import HeroBanner from '../components/layout/HeroBanner.astro';
+import ProductCard from '../components/catalog/ProductCard.astro';
+import Button from '../components/common/Button.astro';
+import { catalogRepo } from '../lib/data/catalogRepo';
+import { BRAND } from '../lib/config/brand';
 
+const categories = await catalogRepo.getCategories();
+const colchonesCategory = categories.find(cat => cat.slug === 'colchones');
+const almohadasCategory = categories.find(cat => cat.slug === 'almohadas');
+
+const colchones = colchonesCategory
+  ? await catalogRepo.getProductsByCategory(colchonesCategory.id)
+  : [];
+const almohadas = almohadasCategory
+  ? await catalogRepo.getProductsByCategory(almohadasCategory.id)
+  : [];
+
+// Featured products: 3 colchones + 3 almohadas = 6 total
+const featuredProducts = [
+  ...colchones.slice(0, 3),
+  ...almohadas.slice(0, 3),
+];
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout title={`${BRAND.name} - ${BRAND.tagline}`}>
+  <!-- Hero Principal -->
+  <HeroBanner 
+    variant="hero"
+    title="LOS MEJORES SUEÑOS"
+    subtitle="Descubre nuestra selección premium de colchones y almohadas. Calidad garantizada con envío gratis a todo el país."
+    imageUrl={BRAND.banners.colchones}
+    primaryCta={{ text: 'Ver Colchones', href: '/colchones' }}
+    secondaryCta={{ text: 'Ver Almohadas', href: '/almohadas' }}
+  />
+
+  <!-- Sección Categorías -->
+  <section class="py-16 md:py-24 bg-white">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12 md:mb-16">
+        <span class="inline-block text-primary-blue font-semibold text-sm uppercase tracking-wider mb-3">
+          Nuestros productos
+        </span>
+        <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold text-dark-slate">
+          Explora por Categoría
+        </h2>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-5xl mx-auto">
+        <!-- Card Colchones -->
+        <a 
+          href="/colchones" 
+          class="category-card group relative rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500"
+        >
+          <div class="aspect-[4/3] relative">
+            <img 
+              src={BRAND.banners.colchones}
+              alt="Colchones"
+              class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              loading="lazy"
+            />
+            <!-- Gradient Overlay -->
+            <div class="absolute inset-0 bg-gradient-to-t from-dark-slate via-dark-slate/50 to-transparent"></div>
+            
+            <!-- Content -->
+            <div class="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
+              <h3 class="text-3xl md:text-4xl font-bold text-white mb-2">
+                Colchones
+              </h3>
+              <p class="text-white/80 text-base md:text-lg mb-4 max-w-xs">
+                Encuentra el colchón perfecto para tu descanso
+              </p>
+              <span class="inline-flex items-center gap-2 text-accent-cyan font-semibold group-hover:gap-4 transition-all">
+                Explorar colección
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Card Almohadas -->
+        <a 
+          href="/almohadas" 
+          class="category-card group relative rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500"
+        >
+          <div class="aspect-[4/3] relative">
+            <img 
+              src={BRAND.banners.almohadas}
+              alt="Almohadas"
+              class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              loading="lazy"
+            />
+            <!-- Gradient Overlay -->
+            <div class="absolute inset-0 bg-gradient-to-t from-dark-slate via-dark-slate/50 to-transparent"></div>
+            
+            <!-- Content -->
+            <div class="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
+              <h3 class="text-3xl md:text-4xl font-bold text-white mb-2">
+                Almohadas
+              </h3>
+              <p class="text-white/80 text-base md:text-lg mb-4 max-w-xs">
+                Complementa tu descanso con nuestras almohadas premium
+              </p>
+              <span class="inline-flex items-center gap-2 text-accent-cyan font-semibold group-hover:gap-4 transition-all">
+                Explorar colección
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Productos Destacados -->
+  <section class="py-16 md:py-24 bg-gray-50">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12 md:mb-16">
+        <span class="inline-block text-primary-blue font-semibold text-sm uppercase tracking-wider mb-3">
+          Los más vendidos
+        </span>
+        <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold text-dark-slate mb-4">
+          Productos Destacados
+        </h2>
+        <p class="text-muted-slate text-lg max-w-2xl mx-auto">
+          Descubre nuestros productos más populares, elegidos por miles de clientes satisfechos
+        </p>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        {featuredProducts.map((product, index) => (
+          <ProductCard product={product} priority={index < 3} />
+        ))}
+      </div>
+
+      <div class="text-center mt-12 md:mt-16">
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a 
+            href="/colchones" 
+            class="inline-flex items-center justify-center gap-2 bg-primary-blue hover:bg-primary-navy text-white font-semibold px-8 py-4 rounded-full text-lg transition-all hover:shadow-lg"
+          >
+            Ver todos los colchones
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+            </svg>
+          </a>
+          <a 
+            href="/almohadas" 
+            class="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-primary-blue font-semibold px-8 py-4 rounded-full text-lg transition-all border-2 border-primary-blue"
+          >
+            Ver todas las almohadas
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Zona unificada: Beneficios + CTA (fondo continuo con gradiente sutil) -->
+  <section class="relative text-white overflow-hidden">
+    <!-- Fondo gradiente continuo -->
+    <div class="absolute inset-0 bg-gradient-to-b from-primary-navy via-primary-navy to-dark-slate"></div>
+    
+    <!-- Contenido -->
+    <div class="relative z-10">
+      <!-- Beneficios -->
+      <div class="py-16 md:py-24">
+        <div class="container mx-auto px-4">
+          <div class="text-center mb-12 md:mb-16">
+            <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+              ¿Por qué elegirnos?
+            </h2>
+            <p class="text-white/70 text-lg max-w-2xl mx-auto">
+              Nos comprometemos a brindarte la mejor experiencia de compra
+            </p>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 max-w-5xl mx-auto">
+            <!-- Benefit 1 -->
+            <div class="text-center group">
+              <div class="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-accent-cyan group-hover:scale-110 transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>Verified User</title><path d="m4.19 4.47 7-3.11c.51-.23 1.11-.23 1.62 0l7 3.11C20.53 4.79 21 5.51 21 6.3V11c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V6.3c0-.79.47-1.51 1.19-1.83ZM6.7 13.7l2.59 2.59c.39.39 1.03.39 1.41 0l6.59-6.59a.996.996 0 1 0-1.41-1.41L10 14.17l-1.89-1.88A.996.996 0 1 0 6.7 13.7Z"></path><metadata>approve, certified, check, complete, done, mark, ok, privacy, private, protect, protection, security, select, shield, tick, user, validate, verified, yes</metadata></svg>
+              </div>
+              <h3 class="text-xl font-bold mb-3">Calidad Garantizada</h3>
+              <p class="text-white/70 leading-relaxed">
+                Productos de la más alta calidad con garantía de fábrica y materiales premium
+              </p>
+            </div>
+            
+            <!-- Benefit 2 -->
+            <div class="text-center group">
+              <div class="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-accent-cyan group-hover:scale-110 transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>Local Shipping</title><path fill-rule="evenodd" d="M17 8h2.5c.31 0 .61.15.8.4l2.3 3.07c.26.35.4.77.4 1.2V16c0 .55-.45 1-1 1h-1c0 1.66-1.34 3-3 3s-3-1.34-3-3H9c0 1.66-1.34 3-3 3s-3-1.34-3-3c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v2ZM5 17c0 .55.45 1 1 1s1-.45 1-1-.45-1-1-1-1 .45-1 1Zm14.5-7.5 1.96 2.5H17V9.5h2.5ZM17 17c0 .55.45 1 1 1s1-.45 1-1-.45-1-1-1-1 .45-1 1Z"></path><metadata>automobile, car, cars, delivery, letter, local, mail, maps, office, package, parcel, post, postal, send, shipping, shopping, stamp, transportation, truck, vehicle</metadata></svg>
+              </div>
+              <h3 class="text-xl font-bold mb-3">Envío Gratis</h3>
+              <p class="text-white/70 leading-relaxed">
+                Entrega a domicilio sin costo adicional en todo el país. Rápido y seguro
+              </p>
+            </div>
+            
+            <!-- Benefit 3 -->
+            <div class="text-center group">
+              <div class="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-accent-cyan group-hover:scale-110 transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>Supervisor Account</title><path d="M11.99 8c0 1.66-1.33 3-2.99 3-1.66 0-3-1.34-3-3s1.34-3 3-3 2.99 1.34 2.99 3Zm7 1.5c0 1.38-1.11 2.5-2.49 2.5a2.5 2.5 0 0 1 0-5c1.38 0 2.49 1.12 2.49 2.5ZM16.5 14c-1.83 0-5.5.92-5.5 2.75V18c0 .55.45 1 1 1h9c.55 0 1-.45 1-1v-1.25c0-1.83-3.67-2.75-5.5-2.75ZM2 16.5C2 14.17 6.67 13 9 13c.66 0 1.5.1 2.37.28C9.33 14.41 9 15.9 9 16.75V19H3c-.55 0-1-.45-1-1v-1.5Z"></path><metadata>account, avatar, control, face, human, parental, parental control, parents, people, person, profile, supervised, supervisor, user</metadata></svg>
+              </div>
+              <h3 class="text-xl font-bold mb-3">Atención Personalizada</h3>
+              <p class="text-white/70 leading-relaxed">
+                Te asesoramos por WhatsApp para encontrar el producto ideal para ti
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Separador sutil -->
+      <div class="container mx-auto px-4">
+        <div class="h-px bg-white/10 max-w-4xl mx-auto"></div>
+      </div>
+      
+      <!-- CTA Final -->
+      <div class="py-16 md:py-20">
+        <div class="container mx-auto px-4 text-center">
+          <h2 class="text-3xl md:text-4xl font-bold mb-4">
+            ¿Listo para mejorar tu descanso?
+          </h2>
+          <p class="text-white/70 text-lg mb-8 max-w-xl mx-auto">
+            Contáctanos ahora y te ayudamos a encontrar el producto perfecto para ti
+          </p>
+          <a 
+            href={`https://wa.me/${BRAND.whatsapp.number}?text=${encodeURIComponent(BRAND.whatsapp.defaultMessage)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-3 bg-accent-cyan hover:bg-accent-cyan-vivid text-dark-slate font-bold px-10 py-5 rounded-full text-xl transition-all hover:scale-105 hover:shadow-xl"
+          >
+            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            Escríbenos por WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
