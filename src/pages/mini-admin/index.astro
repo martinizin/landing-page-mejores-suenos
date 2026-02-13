@@ -1,16 +1,12 @@
 ---
 /*
-  Mini-Admin Catálogo QA — protegido por login simple
-  - El dashboard lo renderiza Astro (variables del lado servidor)
-  - Login con credenciales quemadas protege la vista (sessionStorage)
+  Mini-Admin Catálogo — protegido por Supabase Auth
+  - HTML shell servido por Astro (sin datos server-side)
+  - Autenticación real con supabase.auth.signInWithPassword()
+  - Toggle is_active + Crear producto: client-side con RLS (authenticated)
+  - Bucket de imágenes: "catalog" (carpetas: colchones/, almohadas/)
 */
-import { catalogRepo } from '../../lib/data/catalogRepo';
-const categories = await catalogRepo.getCategories();
-const products = await catalogRepo.getAllProducts();
-function getCategoryName(id: string): string {
-  const cat = categories.find((c: any) => c.id === id);
-  return cat ? `${cat.name} (${cat.slug})` : id;
-}
+export const prerender = false;
 ---
 
 <html lang="es">
@@ -19,208 +15,534 @@ function getCategoryName(id: string): string {
     <meta charset="utf-8" />
     <meta name="robots" content="noindex,nofollow" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body { font-family: Inter, system-ui, sans-serif; }
+      .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #ccc; border-top-color: #0557B8; border-radius: 50%; animation: spin .6s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body class="bg-slate-50 min-h-screen w-full flex items-center justify-center">
-<!-- LOGIN (hidden al estar autenticado) -->
-<div id="miniadmin-login" class="fixed inset-0 flex flex-col items-center justify-center z-30 bg-gradient-to-tr from-slate-200 via-white to-sky-100">
-  <form class="bg-white shadow-xl rounded-xl px-10 py-8 max-w-sm w-full flex flex-col gap-3 border border-slate-200" id="loginform">
-    <div class="mx-auto mb-2 flex flex-col items-center">
-      <svg xmlns='http://www.w3.org/2000/svg' class="w-10 h-10 mb-2 text-accent-cyan" fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2z' /><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7m16 0a4 4 0 00-8 0m8 0H3' /></svg>
-      <h2 class="font-bold text-2xl mb-1 text-dark-slate">Panel Interno QA</h2>
-      <span class="text-sm text-slate-500">Catálogo sólo lectura/modificación básica</span>
-    </div>
-    <div id="login-error"></div>
-    <input class="border border-slate-300 px-3 py-2 rounded text-lg focus:outline-accent-cyan" placeholder="Usuario" name="user" id="user" autocomplete="username"/>
-    <input class="border border-slate-300 px-3 py-2 rounded text-lg focus:outline-accent-cyan" type="password" placeholder="Contraseña" name="pass" id="pass" autocomplete="current-password"/>
-    <button class="mt-1 bg-accent-cyan hover:bg-accent-cyan-vivid text-white text-base font-bold px-5 py-2.5 rounded" type="submit">Entrar</button>
-  </form>
-</div>
 
-<!-- DASHBOARD protegida (hidden si no hay login) -->
-<div id="miniadmin-panel" class="w-full h-full min-h-screen flex flex-col items-center p-0 m-0 bg-slate-50" style="display:none;">
-  <div class="w-full max-w-screen-xl mx-auto py-10">
-    <div class="flex w-full justify-between mb-6 items-center">
-      <h1 class="text-3xl font-bold text-dark-slate">Mini-Admin Catálogo (QA/Marketing)</h1>
-      <button id="logout-btn" class="text-base rounded bg-primary-blue hover:bg-primary-navy text-white px-4 py-2 ml-3 font-bold shadow">Cerrar sesión</button>
+    <!-- ========== LOGIN ========== -->
+    <div id="miniadmin-login" class="fixed inset-0 flex flex-col items-center justify-center z-30 bg-gradient-to-tr from-slate-200 via-white to-sky-100">
+      <form class="bg-white shadow-xl rounded-xl px-10 py-8 max-w-sm w-full flex flex-col gap-3 border border-slate-200" id="loginform">
+        <div class="mx-auto mb-2 flex flex-col items-center">
+          <svg xmlns='http://www.w3.org/2000/svg' class="w-10 h-10 mb-2 text-accent-cyan" fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+            <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2z' />
+            <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7m16 0a4 4 0 00-8 0m8 0H3' />
+          </svg>
+          <h2 class="font-bold text-2xl mb-1 text-dark-slate">Panel Interno QA</h2>
+          <span class="text-sm text-slate-500">Ingresa con tu cuenta de administrador</span>
+        </div>
+        <div id="login-error"></div>
+        <input class="border border-slate-300 px-3 py-2 rounded text-lg focus:outline-accent-cyan" placeholder="Email" name="email" id="email" type="email" autocomplete="username" />
+        <input class="border border-slate-300 px-3 py-2 rounded text-lg focus:outline-accent-cyan" type="password" placeholder="Contraseña" name="pass" id="pass" autocomplete="current-password" />
+        <button class="mt-1 bg-accent-cyan hover:bg-accent-cyan-vivid text-white text-base font-bold px-5 py-2.5 rounded transition-colors disabled:opacity-50" type="submit" id="login-btn">Entrar</button>
+      </form>
     </div>
-    <p class="mb-2"><span class="font-semibold">Vista sólo para revisión/catalogación interna.</span> Cambios realizados aquí afectan el Supabase real que alimenta la landing.</p>
-    <hr class="my-4"/>
-    <h2 class="text-xl font-bold my-4">Categorías (<span>{categories.length}</span>)</h2>
-    <div class="overflow-x-auto">
-      <table class="w-full bg-white shadow rounded mb-9 border">
-        <thead><tr><th class="py-2 px-3 bg-slate-100">ID</th><th class="py-2 px-3 bg-slate-100">Nombre</th><th class="py-2 px-3 bg-slate-100">Slug</th></tr></thead>
-        <tbody>
-          {categories.map(cat => (
-            <tr>
-              <td class="py-2 px-3 font-mono text-xs">{cat.id}</td>
-              <td class="py-2 px-3">{cat.name}</td>
-              <td class="py-2 px-3">{cat.slug}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-    <h2 class="text-xl font-bold my-4">Productos (<span>{products.length}</span>)</h2>
-    <div class="mb-3 flex items-center justify-between w-full">
-      <input type="text" class="border rounded px-3 py-2 w-56" id="search" placeholder="Buscar producto/nombre/slug..." />
-    </div>
-    <div class="overflow-x-auto">
-      <table class="w-full bg-white shadow rounded border mb-12" id="products-table">
-        <thead>
-          <tr>
-            <th class="py-2 px-2 bg-slate-100">Imagen</th>
-            <th class="py-2 px-2 bg-slate-100">ID/Slug</th>
-            <th class="py-2 px-2 bg-slate-100">Nombre</th>
-            <th class="py-2 px-2 bg-slate-100">Activo</th>
-            <th class="py-2 px-2 bg-slate-100">Categoría</th>
-          </tr>
-        </thead>
-        <tbody id="prod-tbody">
-          {products.map(prod => (
-            <tr class={prod.isActive ? '' : 'text-gray-400 font-normal'}>
-              <td class="py-2 px-2">{prod.imageUrl && <img src={prod.imageUrl} alt="img" class="rounded-lg shadow border min-w-[128px] min-h-[96px] max-w-[160px] max-h-[128px]" />}</td>
-              <td class="py-2 px-2 font-mono text-xs">{prod.slug}</td>
-              <td class="py-2 px-2">{prod.name}</td>
-              <td class="py-2 px-2 font-bold">
-  <button class="rounded px-2 py-1 font-bold border"
-    data-slug={prod.slug}
-    data-active={prod.isActive ? '1' : '0'}
-    data-row
-    class={prod.isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200' : 'bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-200'}>
-    {prod.isActive ? 'Sí' : 'No'}
-  </button>
-</td>
-              <td class="py-2 px-2">{getCategoryName(prod.categoryId)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
 
-<script>
-// ----- Seguridad y UI login ------
-const loginDiv = document.getElementById('miniadmin-login');
-const panelDiv = document.getElementById('miniadmin-panel');
-const USER="admindaniv"; const PASS="m3jor3sS42026";
-function showPanel() {
-  if (loginDiv && loginDiv instanceof HTMLElement) loginDiv.style.display = 'none';
-  if (panelDiv && panelDiv instanceof HTMLElement) panelDiv.style.display = 'flex';
-}
-function showLogin(errMsg='') {
-  if (loginDiv && loginDiv instanceof HTMLElement) loginDiv.style.display = 'flex';
-  if (panelDiv && panelDiv instanceof HTMLElement) panelDiv.style.display = 'none';
-  const errDiv = document.getElementById('login-error');
-  if (errDiv) errDiv.innerHTML = errMsg ? `<div class='bg-rose-100 border border-rose-300 text-rose-700 rounded px-2 py-2 text-sm text-center mb-2'>${errMsg}</div>` : '';
-}
-function isLoggedIn(){return sessionStorage.getItem('miniadm_ok')==='1';}
-if(isLoggedIn()) {
-  showPanel();
-} else {
-  showLogin();
-}
-// Login submit
-const form = document.getElementById('loginform');
-if(form){
- form.onsubmit = ev => {
-  ev.preventDefault();
-  const userInput = document.getElementById('user') as HTMLInputElement | null;
-  const passInput = document.getElementById('pass') as HTMLInputElement | null;
-  const u = userInput ? userInput.value.trim() : '';
-  const p = passInput ? passInput.value.trim() : '';
+    <!-- ========== DASHBOARD ========== -->
+    <div id="miniadmin-panel" class="w-full h-full min-h-screen flex flex-col items-center p-0 m-0 bg-slate-50" style="display:none;">
+      <div class="w-full max-w-screen-xl mx-auto py-10 px-4">
 
-  if(u === USER && p === PASS){
-    sessionStorage.setItem('miniadm_ok','1');
-    showPanel();
-  }else{
-    showLogin('Credenciales incorrectas');
-  }
- }; 
-}
-// Logout botón
-const logout = document.getElementById('logout-btn');
-if(logout){
-  logout.onclick = function(){
-    sessionStorage.removeItem('miniadm_ok');
-    window.location.href = '/';
-  };
-}
-// ----- Activar/desactivar producto
-const prodTbody = document.getElementById('prod-tbody');
-const productsTable = document.querySelector('#products-table');
-const alertDiv = document.createElement('div');
-alertDiv.className = 'my-2 text-center hidden';
-if (productsTable && productsTable.parentElement) {
-  productsTable.parentElement.prepend(alertDiv);
-}
-// (Nota: Este es el único bloque de declaración de productsTable/alertDiv)
+        <!-- Header -->
+        <div class="flex w-full justify-between mb-6 items-center flex-wrap gap-3">
+          <h1 class="text-3xl font-bold text-dark-slate">Mini-Admin Catálogo</h1>
+          <div class="flex gap-2">
+            <button id="toggle-create-form" class="text-base rounded bg-accent-cyan hover:bg-accent-cyan-vivid text-white px-4 py-2 font-bold shadow transition-colors">+ Nuevo Producto</button>
+            <button id="logout-btn" class="text-base rounded bg-primary-blue hover:bg-primary-navy text-white px-4 py-2 font-bold shadow transition-colors">Cerrar sesión</button>
+          </div>
+        </div>
+        <p class="mb-2"><span class="font-semibold">Vista para revisión/catalogación interna.</span> Cambios aquí afectan la landing pública.</p>
+        <hr class="my-4" />
 
-// Search productos
-const search = document.getElementById('search') as HTMLInputElement | null;
-const prodRows = prodTbody ? Array.from(prodTbody.querySelectorAll('tr')) : [];
-if (search && prodRows.length) {
-  search.addEventListener('input', function (this: HTMLInputElement) {
-    const q = this.value.trim().toLowerCase();
-    prodRows.forEach(row => {
-      if (row instanceof HTMLElement) {
-        row.style.display = row.textContent && row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        <!-- ========== CREAR PRODUCTO (colapsable) ========== -->
+        <div id="create-product-section" class="hidden mb-8">
+          <div class="bg-white shadow-xl rounded-xl border border-slate-200 p-6 max-w-2xl mx-auto">
+            <h2 class="text-xl font-bold text-dark-slate mb-4">Crear Producto</h2>
+            <form id="create-product-form" class="flex flex-col gap-4">
+              <!-- Nombre -->
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Nombre *</label>
+                <input type="text" name="name" required class="border border-slate-300 px-3 py-2 rounded w-full focus:outline-accent-cyan" placeholder="Ej: DREAM BOX MF" />
+              </div>
+              <!-- Descripción -->
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Descripción *</label>
+                <textarea name="description" required rows="2" class="border border-slate-300 px-3 py-2 rounded w-full focus:outline-accent-cyan" placeholder="Breve descripción del producto"></textarea>
+              </div>
+              <!-- Precio base -->
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Precio base ($) *</label>
+                <input type="number" name="price" required min="0" step="0.01" class="border border-slate-300 px-3 py-2 rounded w-full focus:outline-accent-cyan" placeholder="220" />
+              </div>
+              <!-- Categoría -->
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Categoría *</label>
+                <select name="category_id" required id="category-select" class="border border-slate-300 px-3 py-2 rounded w-full focus:outline-accent-cyan bg-white">
+                  <option value="">Cargando categorías…</option>
+                </select>
+              </div>
+              <!-- Opciones dinámicas -->
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Opciones de tamaño/precio (hasta 5)</label>
+                <p class="text-xs text-slate-400 mb-2">Se guardan como JSON: <code>[&#123;"label":"1 1/2 Plz","price":220&#125;, …]</code></p>
+                <div id="options-container" class="flex flex-col gap-2"></div>
+                <button type="button" id="add-option-btn" class="mt-2 text-sm text-accent-cyan hover:text-accent-cyan-vivid font-semibold transition-colors">+ Agregar opción</button>
+              </div>
+              <!-- Imagen -->
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Imagen del producto</label>
+                <input type="file" name="image" accept="image/*" class="border border-slate-300 px-3 py-2 rounded w-full text-sm" />
+                <p class="text-xs text-slate-400 mt-1">Se sube al bucket "catalog" en Supabase Storage</p>
+              </div>
+              <!-- Feedback -->
+              <div id="create-feedback" class="hidden rounded px-3 py-2 text-sm text-center"></div>
+              <!-- Submit -->
+              <button type="submit" id="create-submit-btn" class="bg-primary-blue hover:bg-primary-navy text-white font-bold px-5 py-2.5 rounded transition-colors disabled:opacity-50">
+                Guardar Producto
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- ========== CATEGORÍAS ========== -->
+        <h2 class="text-xl font-bold my-4">Categorías (<span id="cat-count">…</span>)</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full bg-white shadow rounded mb-9 border" id="categories-table">
+            <thead>
+              <tr>
+                <th class="py-2 px-3 bg-slate-100 text-left">ID</th>
+                <th class="py-2 px-3 bg-slate-100 text-left">Nombre</th>
+                <th class="py-2 px-3 bg-slate-100 text-left">Slug</th>
+              </tr>
+            </thead>
+            <tbody id="cat-tbody">
+              <tr><td colspan="3" class="py-4 text-center text-slate-400"><span class="spinner"></span> Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ========== PRODUCTOS ========== -->
+        <h2 class="text-xl font-bold my-4">Productos (<span id="prod-count">…</span>)</h2>
+        <div class="mb-3 flex items-center justify-between w-full">
+          <input type="text" class="border rounded px-3 py-2 w-56" id="search" placeholder="Buscar producto…" />
+        </div>
+        <div id="products-alert" class="my-2 text-center hidden rounded px-3 py-2 text-base"></div>
+        <div class="overflow-x-auto">
+          <table class="w-full bg-white shadow rounded border mb-12" id="products-table">
+            <thead>
+              <tr>
+                <th class="py-2 px-2 bg-slate-100 text-left">Imagen</th>
+                <th class="py-2 px-2 bg-slate-100 text-left">Slug</th>
+                <th class="py-2 px-2 bg-slate-100 text-left">Nombre</th>
+                <th class="py-2 px-2 bg-slate-100 text-left">Precio</th>
+                <th class="py-2 px-2 bg-slate-100 text-left">Activo</th>
+                <th class="py-2 px-2 bg-slate-100 text-left">Categoría</th>
+              </tr>
+            </thead>
+            <tbody id="prod-tbody">
+              <tr><td colspan="6" class="py-4 text-center text-slate-400"><span class="spinner"></span> Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== CLIENT-SIDE LOGIC ========== -->
+    <script>
+      import { createClient } from '@supabase/supabase-js';
+      import { generateSlug } from '../../lib/utils/slug';
+
+      // ───── Supabase client (PUBLIC_ env vars inlined by Vite at build time) ─────
+      const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+      // ───── DOM refs ─────
+      const loginDiv = document.getElementById('miniadmin-login') as HTMLDivElement;
+      const panelDiv = document.getElementById('miniadmin-panel') as HTMLDivElement;
+      const loginForm = document.getElementById('loginform') as HTMLFormElement;
+      const loginBtn = document.getElementById('login-btn') as HTMLButtonElement;
+      const loginError = document.getElementById('login-error') as HTMLDivElement;
+      const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
+
+      const catTbody = document.getElementById('cat-tbody') as HTMLTableSectionElement;
+      const catCount = document.getElementById('cat-count') as HTMLSpanElement;
+      const prodTbody = document.getElementById('prod-tbody') as HTMLTableSectionElement;
+      const prodCount = document.getElementById('prod-count') as HTMLSpanElement;
+      const productsAlert = document.getElementById('products-alert') as HTMLDivElement;
+      const searchInput = document.getElementById('search') as HTMLInputElement;
+
+      const toggleCreateBtn = document.getElementById('toggle-create-form') as HTMLButtonElement;
+      const createSection = document.getElementById('create-product-section') as HTMLDivElement;
+      const createForm = document.getElementById('create-product-form') as HTMLFormElement;
+      const createSubmitBtn = document.getElementById('create-submit-btn') as HTMLButtonElement;
+      const createFeedback = document.getElementById('create-feedback') as HTMLDivElement;
+      const categorySelect = document.getElementById('category-select') as HTMLSelectElement;
+      const optionsContainer = document.getElementById('options-container') as HTMLDivElement;
+      const addOptionBtn = document.getElementById('add-option-btn') as HTMLButtonElement;
+
+      // ───── State ─────
+      type CategoryItem = { id: string; name: string; slug: string };
+      let categories: CategoryItem[] = [];
+
+      // ───── UI helpers ─────
+      function showPanel() {
+        loginDiv.style.display = 'none';
+        panelDiv.style.display = 'flex';
       }
-    });
-  });
-}
+      function showLogin(msg = '') {
+        loginDiv.style.display = 'flex';
+        panelDiv.style.display = 'none';
+        loginError.innerHTML = msg
+          ? `<div class='bg-rose-100 border border-rose-300 text-rose-700 rounded px-2 py-2 text-sm text-center mb-2'>${msg}</div>`
+          : '';
+      }
 
+      function showAlert(msg: string, success: boolean) {
+        productsAlert.textContent = msg;
+        productsAlert.className = 'my-2 text-center rounded px-3 py-2 text-base ' +
+          (success
+            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+            : 'bg-rose-100 text-rose-700 border border-rose-300');
+        productsAlert.classList.remove('hidden');
+        setTimeout(() => productsAlert.classList.add('hidden'), 4000);
+      }
 
-async function toggleActive(e: Event) {
-  const target = e.target as HTMLElement | null;
-  if (!target) return;
-  const btn = target.closest('button[data-slug]') as HTMLButtonElement | null;
-  if (!btn) return;
-  const slug = btn.getAttribute('data-slug');
-  let active = btn.getAttribute('data-active') === '1';
-  btn.disabled = true; btn.textContent = '...';
-  alertDiv.classList.add('hidden');
-  try {
-    const res = await fetch('/api/product-activate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug, isActive: !active })
-    });
-    const data = await res.json();
-    if (data.success) {
-      // Update button, row style, data-active
-      btn.setAttribute('data-active', active ? '0' : '1');
-      btn.textContent = active ? 'No' : 'Sí';
-      btn.className = (active ? 'bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-200' : 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200') + ' rounded px-2 py-1 font-bold border';
-      const row = btn.closest('tr');
-      if (row) row.className = active ? 'text-gray-400 font-normal' : '';
-      showAlert('Estado actualizado exitosamente', true);
-    } else {
-      showAlert('No se pudo actualizar: ' + (data.message || 'Error inesperado'), false);
-    }
-  } catch (err) {
-    showAlert('Error de red o servidor', false);
-  }
-  btn.disabled = false;
-}
+      function showCreateFeedback(msg: string, success: boolean) {
+        createFeedback.textContent = msg;
+        createFeedback.className = 'rounded px-3 py-2 text-sm text-center ' +
+          (success
+            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+            : 'bg-rose-100 text-rose-700 border border-rose-300');
+        createFeedback.classList.remove('hidden');
+        if (success) setTimeout(() => createFeedback.classList.add('hidden'), 4000);
+      }
 
-function showAlert(msg: string, success: boolean) {
-  alertDiv.textContent = msg;
-  alertDiv.className = 'my-2 text-center rounded px-3 py-2 text-base ' + (success ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-rose-100 text-rose-700 border border-rose-300');
-  alertDiv.classList.remove('hidden');
-  setTimeout(() => alertDiv.classList.add('hidden'), 3000);
-}
-if (prodTbody) {
-  prodTbody.addEventListener('click', function (e: MouseEvent) {
-    const target = e.target as HTMLElement | null;
-    if (!target) return;
-    const btn = target.closest('button[data-slug]');
-    if (btn) toggleActive(e);
-  });
-}
+      function getCategoryName(id: string): string {
+        const cat = categories.find(c => c.id === id);
+        return cat ? cat.name : id;
+      }
 
-</script>
-<noscript><div class="bg-rose-100 border border-rose-300 text-rose-700 rounded px-2 py-2 text-sm max-w-sm mx-auto mt-10">Este panel requiere JavaScript habilitado.</div></noscript>
+      function getCategorySlug(id: string): string {
+        const cat = categories.find(c => c.id === id);
+        return cat ? cat.slug : 'otros';
+      }
 
+      // ───── Auth: check existing session on page load ─────
+      async function checkSession() {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          showPanel();
+          await loadAdminData();
+        } else {
+          showLogin();
+        }
+      }
+
+      // ───── Auth: login ─────
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+        const pass = (document.getElementById('pass') as HTMLInputElement).value.trim();
+        if (!email || !pass) {
+          showLogin('Ingresa email y contraseña');
+          return;
+        }
+
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Ingresando…';
+
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password: pass,
+        });
+
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Entrar';
+
+        if (error) {
+          showLogin(error.message || 'Credenciales incorrectas');
+          return;
+        }
+
+        showPanel();
+        await loadAdminData();
+      });
+
+      // ───── Auth: logout ─────
+      logoutBtn.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        showLogin();
+      });
+
+      // ───── Load data (authenticated role → RLS returns ALL products) ─────
+      async function loadAdminData() {
+        // Categories
+        const { data: catData, error: catErr } = await supabase
+          .from('categories')
+          .select('id, name, slug')
+          .order('name');
+
+        if (catErr) {
+          catTbody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Error: ${catErr.message}</td></tr>`;
+        } else {
+          categories = catData || [];
+          catCount.textContent = String(categories.length);
+          catTbody.innerHTML = categories.map(c => `
+            <tr>
+              <td class="py-2 px-3 font-mono text-xs">${c.id}</td>
+              <td class="py-2 px-3">${c.name}</td>
+              <td class="py-2 px-3">${c.slug}</td>
+            </tr>
+          `).join('');
+
+          // Populate category select in create form
+          categorySelect.innerHTML = '<option value="">— Selecciona categoría —</option>' +
+            categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        // Products (authenticated → no is_active filter by RLS)
+        const { data: prodData, error: prodErr } = await supabase
+          .from('products')
+          .select('id, slug, name, description, price, category_id, options, image_url, is_active')
+          .order('name');
+
+        if (prodErr) {
+          prodTbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-rose-500">Error: ${prodErr.message}</td></tr>`;
+        } else {
+          const products = prodData || [];
+          prodCount.textContent = String(products.length);
+          renderProductRows(products);
+        }
+      }
+
+      // ───── Render product table rows ─────
+      function renderProductRows(products: any[]) {
+        if (products.length === 0) {
+          prodTbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-400">No hay productos</td></tr>';
+          return;
+        }
+        prodTbody.innerHTML = products.map(p => {
+          const active = p.is_active === true;
+          const rowClass = active ? '' : 'text-gray-400';
+          const btnClass = active
+            ? 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200'
+            : 'bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-200';
+          const imgHtml = p.image_url
+            ? `<img src="${p.image_url}" alt="${p.name}" class="rounded-lg shadow border min-w-[128px] min-h-[96px] max-w-[160px] max-h-[128px] object-cover" />`
+            : '<span class="text-xs text-slate-400">Sin imagen</span>';
+          return `
+            <tr class="${rowClass}" data-product-id="${p.id}">
+              <td class="py-2 px-2">${imgHtml}</td>
+              <td class="py-2 px-2 font-mono text-xs">${p.slug}</td>
+              <td class="py-2 px-2">${p.name}</td>
+              <td class="py-2 px-2">$${Number(p.price || 0).toFixed(2)}</td>
+              <td class="py-2 px-2">
+                <button class="toggle-active-btn rounded px-2 py-1 font-bold border text-sm ${btnClass}"
+                  data-id="${p.id}" data-active="${active ? '1' : '0'}">
+                  ${active ? 'Sí' : 'No'}
+                </button>
+              </td>
+              <td class="py-2 px-2">${getCategoryName(p.category_id)}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // ───── Toggle is_active (update by uuid, not slug) ─────
+      prodTbody.addEventListener('click', async (e) => {
+        const target = e.target as HTMLElement;
+        const btn = target.closest('.toggle-active-btn') as HTMLButtonElement | null;
+        if (!btn) return;
+
+        const productId = btn.getAttribute('data-id')!;
+        const currentActive = btn.getAttribute('data-active') === '1';
+        const newActive = !currentActive;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>';
+
+        const { error } = await supabase
+          .from('products')
+          .update({ is_active: newActive })
+          .eq('id', productId);
+
+        if (error) {
+          showAlert('Error al actualizar: ' + error.message, false);
+          btn.disabled = false;
+          btn.textContent = currentActive ? 'Sí' : 'No';
+          return;
+        }
+
+        // Update UI inline
+        btn.setAttribute('data-active', newActive ? '1' : '0');
+        btn.textContent = newActive ? 'Sí' : 'No';
+        btn.className = 'toggle-active-btn rounded px-2 py-1 font-bold border text-sm ' +
+          (newActive
+            ? 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200'
+            : 'bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-200');
+        btn.disabled = false;
+
+        const row = btn.closest('tr') as HTMLTableRowElement;
+        if (row) row.className = newActive ? '' : 'text-gray-400';
+
+        showAlert(`Producto ${newActive ? 'activado' : 'desactivado'} correctamente`, true);
+      });
+
+      // ───── Search filter (works on dynamically rendered rows) ─────
+      searchInput.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        const rows = Array.from(prodTbody.querySelectorAll('tr'));
+        rows.forEach(row => {
+          if (row instanceof HTMLElement) {
+            row.style.display = row.textContent?.toLowerCase().includes(q) ? '' : 'none';
+          }
+        });
+      });
+
+      // ───── Create Product: toggle form visibility ─────
+      toggleCreateBtn.addEventListener('click', () => {
+        createSection.classList.toggle('hidden');
+        toggleCreateBtn.textContent = createSection.classList.contains('hidden')
+          ? '+ Nuevo Producto'
+          : '✕ Cerrar formulario';
+      });
+
+      // ───── Create Product: dynamic options (up to 5) ─────
+      let optionCount = 0;
+
+      addOptionBtn.addEventListener('click', () => {
+        if (optionCount >= 5) {
+          showCreateFeedback('Máximo 5 opciones permitidas', false);
+          return;
+        }
+        optionCount++;
+        const optDiv = document.createElement('div');
+        optDiv.className = 'flex gap-2 items-center option-row';
+        optDiv.innerHTML = `
+          <input type="text" placeholder="Label (ej: 1 1/2 Plz)" class="opt-label border border-slate-300 px-2 py-1.5 rounded flex-1 text-sm focus:outline-accent-cyan" />
+          <input type="number" placeholder="Precio" min="0" step="0.01" class="opt-price border border-slate-300 px-2 py-1.5 rounded w-28 text-sm focus:outline-accent-cyan" />
+          <button type="button" class="remove-option text-rose-500 hover:text-rose-700 font-bold text-lg px-1" title="Eliminar opción">×</button>
+        `;
+        optionsContainer.appendChild(optDiv);
+        optDiv.querySelector('.remove-option')!.addEventListener('click', () => {
+          optDiv.remove();
+          optionCount--;
+        });
+      });
+
+      // ───── Create Product: submit ─────
+      createForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        createFeedback.classList.add('hidden');
+
+        const formData = new FormData(createForm);
+        const name = (formData.get('name') as string || '').trim();
+        const description = (formData.get('description') as string || '').trim();
+        const priceStr = (formData.get('price') as string || '').trim();
+        const categoryId = (formData.get('category_id') as string || '').trim();
+        const imageFile = (createForm.querySelector('input[name="image"]') as HTMLInputElement).files?.[0];
+
+        // Validation
+        if (!name || !description || !priceStr || !categoryId) {
+          showCreateFeedback('Completa todos los campos obligatorios (*)', false);
+          return;
+        }
+        const price = parseFloat(priceStr);
+        if (isNaN(price) || price < 0) {
+          showCreateFeedback('Precio inválido', false);
+          return;
+        }
+
+        // Build options array from dynamic rows
+        const optionRows = optionsContainer.querySelectorAll('.option-row');
+        type OptionItem = { label: string; price: number };
+        const options: OptionItem[] = [];
+        for (const row of Array.from(optionRows)) {
+          const label = (row.querySelector('.opt-label') as HTMLInputElement).value.trim();
+          const optPrice = parseFloat((row.querySelector('.opt-price') as HTMLInputElement).value);
+          if (label && !isNaN(optPrice) && optPrice >= 0) {
+            options.push({ label, price: optPrice });
+          }
+        }
+
+        const slug = generateSlug(name);
+        const categorySlug = getCategorySlug(categoryId);
+
+        createSubmitBtn.disabled = true;
+        createSubmitBtn.textContent = 'Guardando…';
+
+        let imageUrl = '';
+
+        // Upload image to Supabase Storage if provided
+        if (imageFile) {
+          const ext = imageFile.name.split('.').pop()?.toLowerCase() || 'webp';
+          const storagePath = `${categorySlug}/${slug}.${ext}`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from('catalog')
+            .upload(storagePath, imageFile, {
+              upsert: true,
+              contentType: imageFile.type,
+            });
+
+          if (uploadErr) {
+            showCreateFeedback('Error al subir imagen: ' + uploadErr.message, false);
+            createSubmitBtn.disabled = false;
+            createSubmitBtn.textContent = 'Guardar Producto';
+            return;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from('catalog')
+            .getPublicUrl(storagePath);
+          imageUrl = urlData.publicUrl;
+        }
+
+        // Insert product row
+        const { error: insertErr } = await supabase
+          .from('products')
+          .insert({
+            slug,
+            name,
+            description,
+            price,
+            category_id: categoryId,
+            options,
+            image_url: imageUrl,
+            is_active: true,
+          });
+
+        if (insertErr) {
+          showCreateFeedback('Error al crear producto: ' + insertErr.message, false);
+          createSubmitBtn.disabled = false;
+          createSubmitBtn.textContent = 'Guardar Producto';
+          return;
+        }
+
+        // Success
+        showCreateFeedback('Producto creado exitosamente', true);
+        showAlert(`Producto "${name}" creado`, true);
+        createForm.reset();
+        optionsContainer.innerHTML = '';
+        optionCount = 0;
+        createSubmitBtn.disabled = false;
+        createSubmitBtn.textContent = 'Guardar Producto';
+
+        // Refresh products table
+        await loadAdminData();
+      });
+
+      // ───── Init on page load ─────
+      checkSession();
+    </script>
+
+    <noscript>
+      <div class="bg-rose-100 border border-rose-300 text-rose-700 rounded px-2 py-2 text-sm max-w-sm mx-auto mt-10">
+        Este panel requiere JavaScript habilitado.
+      </div>
+    </noscript>
   </body>
 </html>

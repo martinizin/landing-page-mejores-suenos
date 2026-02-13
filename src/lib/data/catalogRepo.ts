@@ -3,9 +3,11 @@ import type { CatalogRepo, Category, Product } from './types';
 
 function mapProduct(row: any): Product {
   return {
+    id: row.id,
     slug: row.slug,
     name: row.name,
     description: row.description,
+    price: row.price ?? 0,
     categoryId: row.category_id,
     options: Array.isArray(row.options)
       ? row.options
@@ -35,7 +37,7 @@ export class SupabaseCatalogRepo implements CatalogRepo {
   async getProductsByCategory(categoryId: string): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
-      .select('slug, name, description, category_id, options, image_url, is_active')
+      .select('id, slug, name, description, price, category_id, options, image_url, is_active')
       .eq('category_id', categoryId)
       .eq('is_active', true)
       .order('name');
@@ -45,7 +47,7 @@ export class SupabaseCatalogRepo implements CatalogRepo {
   async getProductBySlug(slug: string): Promise<Product | null> {
     const { data, error } = await supabase
       .from('products')
-      .select('slug, name, description, category_id, options, image_url, is_active')
+      .select('id, slug, name, description, price, category_id, options, image_url, is_active')
       .eq('slug', slug)
       .eq('is_active', true)
       .single();
@@ -55,7 +57,7 @@ export class SupabaseCatalogRepo implements CatalogRepo {
   async getAllProducts(): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
-      .select('slug, name, description, category_id, options, image_url, is_active')
+      .select('id, slug, name, description, price, category_id, options, image_url, is_active')
       .eq('is_active', true)
       .order('name');
     if (error) throw error;
