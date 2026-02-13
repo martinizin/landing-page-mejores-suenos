@@ -139,12 +139,44 @@ export const prerender = false;
                 <th class="py-2 px-2 bg-slate-100 text-left">Precio</th>
                 <th class="py-2 px-2 bg-slate-100 text-left">Activo</th>
                 <th class="py-2 px-2 bg-slate-100 text-left">Categoría</th>
+                <th class="py-2 px-2 bg-slate-100 text-left">Acciones</th>
               </tr>
             </thead>
             <tbody id="prod-tbody">
-              <tr><td colspan="6" class="py-4 text-center text-slate-400"><span class="spinner"></span> Cargando…</td></tr>
+              <tr><td colspan="7" class="py-4 text-center text-slate-400"><span class="spinner"></span> Cargando…</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== EDIT PRODUCT MODAL ========== -->
+    <div id="edit-modal" class="fixed inset-0 z-40 hidden">
+      <div id="edit-overlay" class="absolute inset-0 bg-black/50"></div>
+      <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-white shadow-xl rounded-xl border border-slate-200 p-6 w-full max-w-lg relative">
+          <h2 class="text-xl font-bold text-dark-slate mb-4">Editar Producto</h2>
+          <form id="edit-product-form" class="flex flex-col gap-4">
+            <input type="hidden" id="edit-product-id" />
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">Nombre *</label>
+              <input type="text" id="edit-name" required class="border border-slate-300 px-3 py-2 rounded w-full focus:outline-accent-cyan" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">Descripción *</label>
+              <textarea id="edit-description" required rows="3" class="border border-slate-300 px-3 py-2 rounded w-full focus:outline-accent-cyan"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">Opciones (precio por opción)</label>
+              <div id="edit-options-container" class="flex flex-col gap-2 max-h-48 overflow-y-auto"></div>
+              <p class="text-xs text-slate-400 mt-1">Cada opción muestra su precio al usuario.</p>
+            </div>
+            <div id="edit-feedback" class="hidden rounded px-3 py-2 text-sm text-center"></div>
+            <div class="flex gap-3 justify-end">
+              <button type="button" id="edit-cancel-btn" class="px-4 py-2 rounded border border-slate-300 text-slate-600 hover:bg-slate-100 font-semibold transition-colors">Cancelar</button>
+              <button type="submit" id="edit-submit-btn" class="bg-primary-blue hover:bg-primary-navy text-white font-bold px-5 py-2 rounded transition-colors disabled:opacity-50">Guardar cambios</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -321,7 +353,7 @@ export const prerender = false;
       // ───── Render product table rows ─────
       function renderProductRows(products: any[]) {
         if (products.length === 0) {
-          prodTbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-400">No hay productos</td></tr>';
+          prodTbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-slate-400">No hay productos</td></tr>';
           return;
         }
         prodTbody.innerHTML = products.map(p => {
@@ -346,9 +378,28 @@ export const prerender = false;
                 </button>
               </td>
               <td class="py-2 px-2">${getCategoryName(p.category_id)}</td>
+              <td class="py-2 px-2">
+                <button class="edit-product-btn rounded px-2 py-1 font-semibold border text-sm bg-blue-50 text-primary-blue border-blue-200 hover:bg-blue-100 transition-colors"
+                  data-id="${p.id}"
+                  data-name="${escapeAttr(p.name)}"
+                  data-description="${escapeAttr(p.description || '')}"
+                  data-options='${JSON.stringify(p.options || [])}'>
+                  Editar
+                </button>
+              </td>
             </tr>
           `;
         }).join('');
+      }
+
+      // ───── Helper: escape strings for HTML attributes ─────
+      function escapeAttr(str: string): string {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
       }
 
       // ───── Toggle is_active (update by uuid, not slug) ─────
@@ -533,6 +584,145 @@ export const prerender = false;
 
         // Refresh products table
         await loadAdminData();
+      });
+
+      // ───── Edit Product: modal logic ─────
+      const editModal = document.getElementById('edit-modal') as HTMLDivElement;
+      const editOverlay = document.getElementById('edit-overlay') as HTMLDivElement;
+      const editForm = document.getElementById('edit-product-form') as HTMLFormElement;
+      const editProductId = document.getElementById('edit-product-id') as HTMLInputElement;
+      const editName = document.getElementById('edit-name') as HTMLInputElement;
+      const editDescription = document.getElementById('edit-description') as HTMLTextAreaElement;
+      const editOptionsContainer = document.getElementById('edit-options-container') as HTMLDivElement;
+      const editFeedback = document.getElementById('edit-feedback') as HTMLDivElement;
+      const editSubmitBtn = document.getElementById('edit-submit-btn') as HTMLButtonElement;
+      const editCancelBtn = document.getElementById('edit-cancel-btn') as HTMLButtonElement;
+
+      function showEditFeedback(msg: string, success: boolean) {
+        editFeedback.textContent = msg;
+        editFeedback.className = 'rounded px-3 py-2 text-sm text-center ' +
+          (success
+            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+            : 'bg-rose-100 text-rose-700 border border-rose-300');
+        editFeedback.classList.remove('hidden');
+      }
+
+      function openEditModal(id: string, name: string, description: string, optionsJson: string) {
+        editProductId.value = id;
+        editName.value = name;
+        editDescription.value = description;
+        editFeedback.classList.add('hidden');
+        editSubmitBtn.disabled = false;
+        editSubmitBtn.textContent = 'Guardar cambios';
+
+        // Render editable options
+        editOptionsContainer.innerHTML = '';
+        try {
+          const opts = JSON.parse(optionsJson || '[]');
+          opts.forEach((opt: { label: string; price: number }, idx: number) => {
+            const row = document.createElement('div');
+            row.className = 'flex gap-2 items-center edit-option-row';
+            row.innerHTML = `
+              <span class="text-sm text-slate-600 flex-1 truncate" title="${escapeAttr(opt.label)}">${escapeAttr(opt.label)}</span>
+              <input type="number" min="0" step="0.01" value="${opt.price}" data-opt-idx="${idx}"
+                class="edit-opt-price border border-slate-300 px-2 py-1.5 rounded w-28 text-sm focus:outline-accent-cyan" />
+            `;
+            editOptionsContainer.appendChild(row);
+          });
+        } catch (_) { /* ignore parse errors */ }
+
+        editModal.classList.remove('hidden');
+      }
+
+      function closeEditModal() {
+        editModal.classList.add('hidden');
+        editFeedback.classList.add('hidden');
+      }
+
+      // Open modal via event delegation on edit buttons
+      prodTbody.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const btn = target.closest('.edit-product-btn') as HTMLButtonElement | null;
+        if (!btn) return;
+        openEditModal(
+          btn.getAttribute('data-id')!,
+          btn.getAttribute('data-name')!,
+          btn.getAttribute('data-description')!,
+          btn.getAttribute('data-options') || '[]'
+        );
+      });
+
+      // Close modal
+      editCancelBtn.addEventListener('click', closeEditModal);
+      editOverlay.addEventListener('click', closeEditModal);
+
+      // Submit edit
+      editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        editFeedback.classList.add('hidden');
+
+        const productId = editProductId.value;
+        const name = editName.value.trim();
+        const description = editDescription.value.trim();
+
+        if (!name || !description) {
+          showEditFeedback('Nombre y descripción son obligatorios', false);
+          return;
+        }
+
+        // Collect updated option prices
+        const optionInputs = editOptionsContainer.querySelectorAll('.edit-opt-price') as NodeListOf<HTMLInputElement>;
+        let currentOptions: { label: string; price: number }[] = [];
+        try {
+          const editBtn = prodTbody.querySelector(`tr[data-product-id="${productId}"] .edit-product-btn`) as HTMLButtonElement;
+          currentOptions = JSON.parse(editBtn?.getAttribute('data-options') || '[]');
+        } catch (_) {}
+        optionInputs.forEach((input) => {
+          const idx = parseInt(input.getAttribute('data-opt-idx') || '0', 10);
+          const val = parseFloat(input.value);
+          if (!isNaN(val) && val >= 0 && currentOptions[idx]) {
+            currentOptions[idx].price = val;
+          }
+        });
+
+        // Derive price from min option price
+        const priceVal = currentOptions.length > 0
+          ? Math.min(...currentOptions.map(o => o.price))
+          : 0;
+
+        editSubmitBtn.disabled = true;
+        editSubmitBtn.textContent = 'Guardando…';
+
+        const { error } = await supabase
+          .from('products')
+          .update({ name, description, price: priceVal, options: currentOptions })
+          .eq('id', productId);
+
+        if (error) {
+          showEditFeedback('Error al actualizar: ' + error.message, false);
+          editSubmitBtn.disabled = false;
+          editSubmitBtn.textContent = 'Guardar cambios';
+          return;
+        }
+
+        // Update the row in the DOM without reloading
+        const row = prodTbody.querySelector(`tr[data-product-id="${productId}"]`);
+        if (row) {
+          const cells = row.querySelectorAll('td');
+          // cells[2] = name, cells[3] = price
+          cells[2].textContent = name;
+          cells[3].textContent = `$${priceVal.toFixed(2)}`;
+          // Update data-* on the edit button
+          const editBtn = row.querySelector('.edit-product-btn') as HTMLButtonElement;
+          if (editBtn) {
+            editBtn.setAttribute('data-name', escapeAttr(name));
+            editBtn.setAttribute('data-description', escapeAttr(description));
+            editBtn.setAttribute('data-options', JSON.stringify(currentOptions));
+          }
+        }
+
+        closeEditModal();
+        showAlert(`Producto "${name}" actualizado`, true);
       });
 
       // ───── Init on page load ─────
